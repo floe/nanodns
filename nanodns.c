@@ -14,6 +14,7 @@
  */
 
 #include <errno.h>
+#include <ctype.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -136,6 +137,7 @@ int main(int argc, char* argv[]) {
 		printf("Received valid query for: %s\n",host);
 
     // get the IP answer data
+    for (unsigned int i = 0; i < strlen(host); i++) host[i] = tolower(host[i]);
     FILE* answer_file = fopen(host,"r");
     char answer_data[32];
     struct in_addr answer_addr = { 0 };
