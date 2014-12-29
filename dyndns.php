@@ -7,5 +7,6 @@ $ip = $_SERVER['REMOTE_ADDR'];
 $filename = substr($hostname[0],0,10).$subdomain;
 print 'Registering '.$ip.' as '.$filename.'... ';
 file_put_contents($prefix.$filename,$ip."\n");
+chmod($prefix.$filename,0644);
 print 'done.'
 ?>
