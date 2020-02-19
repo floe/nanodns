@@ -17,6 +17,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <sys/uio.h>
@@ -27,6 +28,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <time.h>
 
 #define NANODNS_ROOT "/var/lib/nanodns/"
 #define NANODNS_UID  65534 // nobody
@@ -79,6 +81,8 @@ int main(int argc, char* argv[]) {
 
   result = bind(mysock,(struct sockaddr*)&serveraddr,sizeof(serveraddr));
   chkerr(result,"Can't bind udp socket");
+
+  tzset();
 
   // safety first!
   chkerr( chdir(NANODNS_ROOT),"Can't change to data directory (" NANODNS_ROOT ")\n");
@@ -141,16 +145,26 @@ int main(int argc, char* argv[]) {
     FILE* answer_file = fopen(host,"r");
     char answer_data[32];
     struct in_addr answer_addr = { 0 };
+    struct stat filestat;
     if (!answer_file) {
       printf("Sorry: no data available for this query.\n");
     } else {
       fgets(answer_data,sizeof(answer_data),answer_file);
+      fstat(fileno(answer_file),&filestat);
       fclose(answer_file);
       if (!inet_aton(answer_data,&answer_addr))
         printf("Sorry: unable to convert data to IPv4 address.\n");
       else
         printf("Preparing reply with %s.\n",inet_ntoa(answer_addr));
     }
+
+    struct tm modtime; localtime_r(&filestat.st_mtime,&modtime);
+    int fakettl =
+      100000000 * (modtime.tm_year-100) +
+      1000000   * (modtime.tm_mon+1   ) +
+      10000     * (modtime.tm_mday    ) +
+      100       * (modtime.tm_hour    ) +
+      1         * (modtime.tm_min     );
 
     // fill rest of fields
     int answer_len = sizeof(dns_query)+sizeof(dns_answer_a)+offs+5+offs+1;
@@ -161,7 +175,7 @@ int main(int argc, char* argv[]) {
 		query->auth_count = htons(0);
 		query->add_count = htons(0);
 
-    answer->ttl = htonl(60);
+    answer->ttl = htonl(fakettl);
     answer->rdlength = htons(4);
     answer->ipaddr = answer_addr.s_addr;
 
