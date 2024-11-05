@@ -1,2 +1,2 @@
 nanodns: nanodns.c
-	g++ -Wall -o nanodns nanodns.c
+	g++ -Wall -ggdb -o nanodns nanodns.c

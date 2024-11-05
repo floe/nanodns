@@ -68,6 +68,9 @@ int main(int argc, char* argv[]) {
 
 	uint8_t buffer[4096];
 	struct dns_query* query = (struct dns_query*)buffer;
+
+  printf("nanodns v0.1\n(c) 2014-2024 floe@butterbrot.org\n\n");
+  printf("In case of bind() errors, specify a single IP address as bind target.\n\n");
  
 	// UDP-Socket erzeugen
   mysock = socket(PF_INET,SOCK_DGRAM,0);
@@ -77,6 +80,7 @@ int main(int argc, char* argv[]) {
   memset((char*)&serveraddr,0,sizeof(serveraddr));
   serveraddr.sin_family = AF_INET;
   serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
+  if (argc > 1) serveraddr.sin_addr.s_addr = inet_addr(argv[1]);
   serveraddr.sin_port = htons(53);
 
   result = bind(mysock,(struct sockaddr*)&serveraddr,sizeof(serveraddr));
@@ -130,8 +134,8 @@ int main(int argc, char* argv[]) {
     dns_answer_a* answer = (dns_answer_a*)(query->payload+offs+5+offs+1);
 
     if (ntohs(answer->a_type) != 0x0001) {
-      printf("Sorry: I can only answer questions for A records.\n");
-      continue;
+      printf("Sorry: I can only answer questions for A records (not 0x%04x).\n",ntohs(answer->a_type));
+      //continue;
     }
     if (ntohs(answer->a_class) != 0x0001) {
       printf("Sorry: I can only answer questions for Internet records.\n");
@@ -168,6 +172,7 @@ int main(int argc, char* argv[]) {
 
     // fill rest of fields
     int answer_len = sizeof(dns_query)+sizeof(dns_answer_a)+offs+5+offs+1;
+    // set QR and AA flags (see RFC 1035, section 4.1.1)
     query->flags = htons(0x8400);
 
     query->question_count = htons(1);
@@ -180,8 +185,9 @@ int main(int argc, char* argv[]) {
     answer->ipaddr = answer_addr.s_addr;
 
     // no answer available?
-    if (!answer_addr.s_addr) {
-      query->flags |= htons(0x0003);
+    if ((!answer_addr.s_addr) || (ntohs(answer->a_type) != 0x0001)) {
+      // set NXDOMAIN flag in response
+      //query->flags |= htons(0x0003);
       query->answer_count = htons(0);
       answer_len = sizeof(dns_query)+offs+5;
     }
