@@ -115,7 +115,7 @@ int main(int argc, char* argv[]) {
 
     // convert the query into a plain old null-terminated string
     char host[4096] = { 0 };
-		uint8_t len, offs = 0;
+    long unsigned int len, offs = 0;
     while ((offs < result-sizeof(struct dns_query)) && (len = query->payload[offs])) {
       strncat(host,(char*)(query->payload+offs+1),len);
       strncat(host,".",1);
